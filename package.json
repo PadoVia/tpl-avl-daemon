@@ -1,0 +1,37 @@
+{
+  "name": "tpl-avl-daemon",
+  "version": "1.0.0",
+  "description": "tpl-avl-daemon è un demone in Node.js per il monitoraggio in tempo reale dei mezzi del Trasporto Pubblico Locale (TPL) attraverso sorgenti AVL e GTFS-RT.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "lint": "eslint .",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "TPL",
+    "AVL",
+    "GTFS-RT",
+    "mobilità",
+    "trasporti",
+    "monitoraggio",
+    "realtime",
+    "geolocalizzazione",
+    "Node.js",
+    "public-transport"
+  ],
+  "author": "Giasinit (Yassine Zarouali)",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.10.0",
+    "jsonwebtoken": "^9.0.2",
+    "luxon": "^3.6.1",
+    "redis": "^5.5.6"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0",
+    "nodemon": "^3.0.0",
+    "prettier": "^3.0.0"
+  }
+}
