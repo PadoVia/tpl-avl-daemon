@@ -1,5 +1,6 @@
 const axios = require('axios');
-const { parseRomeTimestamp, calculateBearing } = require('../utils');
+const { parseRomeTimestamp, calculateBearing, calculateSpeed } = require('../utils');
+const GtfsRealtimeBindings = require('gtfs-realtime-bindings');
 
 const vehicles = new Map();
 
@@ -84,7 +85,69 @@ async function fetchVehicles(token, config) {
   return updatedVehicles;
 }
 
+async function fetchVehiclesGTFSRT(token, config) {
+    const res = await axios.get(config.url, {
+        responseType: 'arraybuffer',
+        headers: {
+            ...config.headers,
+            Authorization: `Basic ${token}`
+        },
+        validateStatus: () => true 
+    });
+
+    if (res.status !== 200) {
+        throw new Error('Failed to fetch GTFS-RT data');
+    }
+
+    if (!res.data || !res.data.length) {
+        console.error("Risposta vuota o non valida:", res.data);
+        return;
+    }
+
+    const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(new Uint8Array(res.data));
+
+    const updatedVehicles = [];
+
+    feed.entity.forEach(entity => {
+        if (!entity.vehicle || !entity.vehicle.vehicle) return;
+
+        const vehicle = entity.vehicle.vehicle;
+        const id = vehicle.id;
+        const lat = entity.vehicle.position.latitude;
+        const lon = entity.vehicle.position.longitude;
+        const timestamp = new Date(entity.vehicle.timestamp * 1000).toISOString();
+        const plate = cleanPlate(vehicle.label || '');
+
+        const prev = vehicles.get(id);
+
+        const speed = prev
+        ? calculateSpeed(prev.position.lat, prev.position.lon, lat, lon, prev.timestamp, timestamp)
+        : null;
+        const bearing = prev
+        ? calculateBearing(prev.position.lat, prev.position.lon, lat, lon)
+        : null;
+
+        // Confronta i timestamp per vedere se è più recente
+        if (!prev || new Date(timestamp) > new Date(prev.timestamp)) {
+            const vehicleData = {
+                plate,
+                timestamp,
+                speed,
+                door: prev?.door || 0,
+                bearing,
+                position: { lat, lon }
+            };
+
+            vehicles.set(id, vehicleData);
+            updatedVehicles.push(vehicleData);
+        }
+    });
+
+    return updatedVehicles;
+}
+
 module.exports = {
   login,
-  fetchVehicles
+  fetchVehicles,
+  fetchVehiclesGTFSRT
 };
