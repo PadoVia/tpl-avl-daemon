@@ -1,0 +1,33 @@
+{
+  "default_polling_interval": 1,
+  "default_timeout": 30,
+  "default_max_retries": 3,
+  "redis_url": "redis://user:password@redis.example.org:6379",
+  "operators": [
+    {
+      "name": "Busitalia Veneto S.p.A. - Bacino di Padova",
+      "slug": "busitalia_veneto_padua",
+      "enable": true,
+      "filename": "busitalia_veneto_padua.js",
+      "avl": {
+        "enable": true,
+        "login": {
+          "url": "https://api.busitalia.example.org/v1/auth/login",
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "username": "your-username",
+          "password": "your-password"
+        },
+        "vehicles": {
+          "url": "https://api.busitalia.example.org/v1/vehicles",
+          "method": "GET",
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        }
+      }
+    }
+  ]
+}
