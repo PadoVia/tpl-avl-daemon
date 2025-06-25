@@ -27,6 +27,19 @@
             "Content-Type": "application/json"
           }
         }
+      },
+      "gtfsrt": {
+        "enable": true,
+        "username": "gtfs-username",
+        "password": "gtfs-password",
+        "tram": {
+          "url": "https://gtfs.example.org/vehicle-positions-tram.pb",
+          "method": "GET"
+        },
+        "bus": {
+          "url": "https://gtfs.example.org/vehicle-positions-bus.pb",
+          "method": "GET"
+        }
       }
     }
   ]

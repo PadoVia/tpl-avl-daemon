@@ -107,6 +107,13 @@ tpl-avl-daemon/
         "enable": true,
         "login": { "url": "...", "username": "...", "password": "..." },
         "vehicles": { "url": "..." }
+      },
+      "gtfsrt": {
+        "enable": true,
+        "username": "...",
+        "password": "...",
+        "tram": { "url": "...", "method": "GET" },
+        "bus": { "url": "...", "method": "GET" },
       }
     }
   ]
