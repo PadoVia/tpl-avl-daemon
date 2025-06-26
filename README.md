@@ -141,6 +141,7 @@ Nel refactoring attuale (cartella operatori e plugin fully supported):
 (Per dettagli, motivazione tecnica e best practice, vedi commenti nei singoli sorgenti.)
 
 Autore
+
 fede (6615.io)
 
 ## 🪪 Licenza
