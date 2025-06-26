@@ -2,7 +2,7 @@
   "default_polling_interval": 1,
   "default_timeout": 30,
   "default_max_retries": 3,
-  "redis_url": "redis://user:password@redis.example.org:6379",
+  "redis_url": "${REDIS_URL}",
   "operators": [
     {
       "name": "Busitalia Veneto S.p.A. - Bacino di Padova",
@@ -17,8 +17,8 @@
           "headers": {
             "Content-Type": "application/json"
           },
-          "username": "your-username",
-          "password": "your-password"
+          "username": "${AVL_USERNAME}",
+          "password": "${AVL_PASSWORD}"
         },
         "vehicles": {
           "url": "https://api.busitalia.example.org/v1/vehicles",
@@ -30,17 +30,11 @@
       },
       "gtfsrt": {
         "enable": true,
-        "username": "gtfs-username",
-        "password": "gtfs-password",
-        "tram": {
-          "url": "https://gtfs.example.org/vehicle-positions-tram.pb",
-          "method": "GET"
-        },
-        "bus": {
-          "url": "https://gtfs.example.org/vehicle-positions-bus.pb",
-          "method": "GET"
-        }
-      }
+        "username": "${GTFSRT_USERNAME}",
+        "password": "${GTFSRT_PASSWORD}",
+        "url": "https://api.busitalia.example.org/v1/gtfsrt-feed"
+      },
+      "retry_backoff_sec": 120
     }
   ]
 }
