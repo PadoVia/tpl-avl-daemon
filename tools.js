@@ -3,7 +3,7 @@
 const path = require('path');
 const { retry } = require('./utils');
 const { saveVehiclesByPlate } = require('./redisClient');
-const { addToken, getToken } = require('./tokenManager');
+const { addToken, getTokenForOperator } = require('./tokenManager');
 
 /**
  * multi-feed: ora riceve oggetto {type, feed, index}
@@ -46,7 +46,9 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
   const tokenKey = `${operator.slug}_${type}_${index}`;
 
   if (type === 'avl') {
-    let token = getToken(tokenKey);
+    // Handle token per feed AVL specifico
+    let token = await getTokenForOperator(operator);
+
     if (!token) {
       console.log(`No token found for operator ${operator.name} [feed #${index}], logging in...`);
       token = await retry(() => handler.login(feed.login), 3, 1000);
