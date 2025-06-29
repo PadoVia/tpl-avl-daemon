@@ -2,39 +2,48 @@
   "default_polling_interval": 1,
   "default_timeout": 30,
   "default_max_retries": 3,
-  "redis_url": "${REDIS_URL}",
+  "redis_url": "redis://user:password@redis.example.org:6379",
   "operators": [
     {
       "name": "Busitalia Veneto S.p.A. - Bacino di Padova",
       "slug": "busitalia_veneto_padua",
       "enable": true,
       "filename": "busitalia_veneto_padua.js",
-      "avl": {
-        "enable": true,
-        "login": {
-          "url": "https://api.busitalia.example.org/v1/auth/login",
-          "method": "POST",
-          "headers": {
-            "Content-Type": "application/json"
+      "avl": [
+        {
+          "enable": true,
+          "login": {
+            "url": "https://api.busitalia.example.org/v1/auth/login",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "username": "your-username",
+            "password": "your-password"
           },
-          "username": "${AVL_USERNAME}",
-          "password": "${AVL_PASSWORD}"
-        },
-        "vehicles": {
-          "url": "https://api.busitalia.example.org/v1/vehicles",
-          "method": "GET",
-          "headers": {
-            "Content-Type": "application/json"
+          "vehicles": {
+            "url": "https://api.busitalia.example.org/v1/vehicles",
+            "method": "GET",
+            "headers": {
+              "Content-Type": "application/json"
+            }
           }
         }
-      },
-      "gtfsrt": {
-        "enable": true,
-        "username": "${GTFSRT_USERNAME}",
-        "password": "${GTFSRT_PASSWORD}",
-        "url": "https://api.busitalia.example.org/v1/gtfsrt-feed"
-      },
-      "retry_backoff_sec": 120
+      ],
+      "gtfsrt": [
+        {
+          "enable": true,
+          "username": "gtfs-username",
+          "password": "gtfs-password",
+          "feed_url": "https://gtfsrt.busitalia.example.org/gtfsrt"
+        }
+      ],
+      "siri": [
+        {
+          "enable": false,
+          "endpoint": "https://siri.busitalia.example.org/vm"
+        }
+      ]
     }
   ]
 }
