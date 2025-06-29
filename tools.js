@@ -58,8 +58,7 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
   } else if (type === 'gtfsrt') {
     const token = Buffer.from(`${feed.username}:${feed.password}`).toString('base64');
     // La property dell'URL può essere feed.feed_url (nuovo) o feed.url (vecchio)
-    const url = feed.feed_url || feed.url;
-    vehicles = await retry(() => handler.fetchVehiclesGTFSRT(token, url), 3, 1000);
+    vehicles = await retry(() => handler.fetchVehiclesGTFSRT(token, feed), 3, 1000);
   } else if (type === 'siri') {
     vehicles = await retry(() => handler.fetchVehiclesSIRI(feed.endpoint), 3, 1000);
   } else {
