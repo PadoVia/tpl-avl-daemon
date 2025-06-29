@@ -9,6 +9,7 @@
       "slug": "busitalia_veneto_padua",
       "enable": true,
       "filename": "busitalia_veneto_padua.js",
+
       "avl": [
         {
           "enable": true,
@@ -30,18 +31,28 @@
           }
         }
       ],
+
       "gtfsrt": [
         {
           "enable": true,
+          "label": "tram",
           "username": "gtfs-username",
           "password": "gtfs-password",
-          "feed_url": "https://gtfsrt.busitalia.example.org/gtfsrt"
+          "feed_url": "https://gtfs.example.org/vehicle-positions-tram.pb"
+        },
+        {
+          "enable": true,
+          "label": "bus",
+          "username": "gtfs-username",
+          "password": "gtfs-password",
+          "feed_url": "https://gtfs.example.org/vehicle-positions-bus.pb"
         }
       ],
+
       "siri": [
         {
           "enable": false,
-          "endpoint": "https://siri.busitalia.example.org/vm"
+          "endpoint": "https://api.busitalia.example.org/v1/siri-feed"
         }
       ]
     }
