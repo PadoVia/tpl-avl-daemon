@@ -22,15 +22,17 @@ async function getTokenForOperator(operator, logger) {
         return tokenCache[cacheKey].token;
     }
 
+    const avl = operator?.avl[0] || {}; // prendiamo solo il primo feed avl.
+
     // prepara credenziali, eventualmente popolando da env
-    const username = operator?.avl?.login?.username || process.env.AVL_USERNAME;
-    const password = operator?.avl?.login?.password || process.env.AVL_PASSWORD;
+    const username = avl?.login?.username || process.env.AVL_USERNAME;
+    const password = avl?.login?.password || process.env.AVL_PASSWORD;
 
     try {
         const res = await axios({
-            url: operator.avl.login.url,
-            method: operator.avl.login.method || 'POST',
-            headers: operator.avl.login.headers || {},
+            url: avl.login.url,
+            method: avl.login.method || 'POST',
+            headers: avl.login.headers || {},
             data: {
                 username,
                 password
