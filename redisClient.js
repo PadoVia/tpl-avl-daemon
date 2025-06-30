@@ -5,6 +5,7 @@
  *         qui ora è poolato, cho messo log strutturati e riusa la url dalla env per sicurezza.
  */
 
+const path = require('path');
 const { createClient } = require('redis');
 const winston = require('winston');
 
@@ -15,7 +16,8 @@ const logger = winston.createLogger({
 });
 
 // usare solo la URL da config/environment per sicurezza lol
-const config = require('./config.json');
+let configPath = process.env.CONFIG_PATH || path.resolve(__dirname, 'config.json');
+let config = require(configPath);
 const url = config.redis_url || process.env.REDIS_URL;
 
 const redis = createClient({ url });
