@@ -126,11 +126,23 @@ tpl-avl-daemon/
 
 Per aggiungere un nuovo operatore:
 
-1. Crea un file in `operators/` (es. `azienda_xyz.js`)
-2. Implementa le funzioni `login` e `fetchVehicles`
-3. Aggiungilo in `config.json` con `"enable": true`
+## Migliorie e refactor by fede
+Nel refactoring attuale (cartella operatori e plugin fully supported):
 
----
+- Hot reload della configurazione: puoi modificare config.json senza riavviare tutto il processo.
+- Supporto completo a plugin per singolo operatore tramite la chiave filename in config e i file in /operators/.
+- Logging strutturato (Winston) e dettagliato per ogni step. Log separati per errori/ok dai vari poller.
+- Healthcheck HTTP (endpoint /healthz con Express): facile da integrare con monitor esterni o orchestratori.
+- Graceful shutdown: chiusura sicura di poller, server e redis senza perdere dati.
+- Gestione credenziali tramite ENV: sicurezza, nessuna password nel repo.
+- Pooling e retry avanzato di Redis: più robusto contro errori di rete/disconnessioni.
+- Plugin "custom_transform" e gestione /operators/: personalizza parsing, enrich/normalize e logica avanzata con semplici moduli JS separati.
+- Logica polling isolata per ogni operatore: un crash a valle NON blocca altri poller.
+(Per dettagli, motivazione tecnica e best practice, vedi commenti nei singoli sorgenti.)
+
+Autore
+
+fede (6615.io)
 
 ## 🪪 Licenza
 

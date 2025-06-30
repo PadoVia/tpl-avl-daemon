@@ -1,92 +1,99 @@
+// COMMIT n3: refactor: reintrodotta funzione avanzata GTFS-RT rimossa temporaneamente perché non sapevo se sarebbe crashata col multi-feed; ho testato e sembra essere tutto compatibile.
+
 const axios = require('axios');
 const { parseRomeTimestamp, calculateBearing, calculateSpeed } = require('../utils');
 const GtfsRealtimeBindings = require('gtfs-realtime-bindings');
-
 const vehicles = new Map();
 
+/**
+ * effettua login e ritorna token (per feed AVL)
+ */
 async function login(config) {
-  const payload = {
-    username: config.username,
-    password: config.password
-  };
-
-  const res = await axios.post(config.url, payload, {
-    headers: config.headers
-  });
-
-  if (res.status !== 200 || !res.data.token) {
-    throw new Error('Login failed');
-  }
-
-  return res.data.token;
-}
-
-function cleanPlate(codice) {
-  // Rimuove "TRAM" e spazi
-  let plate = codice.replace("TRAM", "P").trim();
-
-  // Se inizia con "B" e poi solo zeri + numeri → rimuovi zeri
-  if (/^B0+\d+$/.test(plate)) {
-    plate = plate.slice(1).replace(/^0+/, '');
-  }
-
-  return plate;
-}
-
-async function fetchVehicles(token, config) {
-  const res = await axios.get(config.url, {
-    headers: {
-      ...config.headers,
-      Authorization: `Bearer ${token}`
-    }
-  });
-
-  const updatedVehicles = [];
-
-  if (res.status === 200 && Array.isArray(res.data.data)) {
-    res.data.data.forEach(vehicle => {
-      const { id, last_lat: lat, last_lon: lon, last_dt_quando: dt } = vehicle;
-      if (!id || !lat || !lon) return;
-
-      const timestamp = parseRomeTimestamp(dt || '');
-      const plate = cleanPlate(vehicle.codice || '');
-      const speed = vehicle.last_velocita
-        ? parseFloat((vehicle.last_velocita / 10000 * 3.6).toFixed(2))
-        : null;
-
-      const prev = vehicles.get(id);
-      const bearing = prev
-        ? calculateBearing(prev.position.lat, prev.position.lon, lat, lon)
-        : null;
-
-      const isUpdated = prev &&
-        prev.plate === plate &&
-        (prev.position.lat !== lat ||
-         prev.position.lon !== lon ||
-         prev.timestamp !== timestamp);
-
-      const vehicleData = {
-        plate,
-        timestamp,
-        speed,
-        door: speed >= 1 ? 0 : vehicle.porta,
-        bearing,
-        position: { lat, lon }
-      };
-
-      vehicles.set(id, vehicleData);
-
-      if (isUpdated) {
-        updatedVehicles.push(vehicleData);
-      }
+    const payload = {
+        username: config.username,
+        password: config.password
+    };
+    const res = await axios.post(config.url, payload, {
+        headers: config.headers
     });
-  }
-
-  return updatedVehicles;
+    if (res.status !== 200 || !res.data.token) {
+        throw new Error('Login failed');
+    }
+    return res.data.token;
 }
 
-async function fetchVehiclesGTFSRT(token, config) {
+/**
+ * risistema la targa rimuovendo prefissi/suffix locali ("TRAM" etc)
+ */
+function cleanPlate(codice) {
+    let plate = codice.replace("TRAM", "P").trim();
+    if (/^B0+\d+$/.test(plate)) {
+        plate = plate.slice(1).replace(/^0+/, '');
+    }
+    return plate;
+}
+
+/**
+ * esegue polling lista veicoli da endpoint avl (token già validato)
+ */
+async function fetchVehicles(token, config) {
     const res = await axios.get(config.url, {
+        headers: {
+            ...config.headers,
+            Authorization: `Bearer ${token}`
+        }
+    });
+
+    const updatedVehicles = [];
+
+    if (res.status === 200 && Array.isArray(res.data.data)) {
+        res.data.data.forEach(vehicle => {
+            const { id, last_lat: lat, last_lon: lon, last_dt_quando: dt } = vehicle;
+            if (!id || !lat || !lon) return;
+
+            const timestamp = parseRomeTimestamp(dt || '');
+            const plate = cleanPlate(vehicle.codice || '');
+            const speed = vehicle.last_velocita
+                ? parseFloat((vehicle.last_velocita / 10000 * 3.6).toFixed(2))
+                : null;
+
+            const prev = vehicles.get(id);
+            const bearing = prev
+                ? calculateBearing(prev.position.lat, prev.position.lon, lat, lon)
+                : null;
+
+            const isUpdated = prev &&
+                prev.plate === plate &&
+                (prev.position.lat !== lat ||
+                 prev.position.lon !== lon ||
+                 prev.timestamp !== timestamp);
+
+            const vehicleData = {
+                plate,
+                timestamp,
+                speed,
+                door: speed >= 1 ? 0 : vehicle.porta,
+                bearing,
+                position: { lat, lon }
+            };
+
+            vehicles.set(id, vehicleData);
+
+            if (isUpdated) {
+                updatedVehicles.push(vehicleData);
+            }
+        });
+    }
+    return updatedVehicles;
+}
+
+/**
+ * ADVANCED: polling e parsing GTFS-RT, mappa veicoli in base a posizione, speed, timestamp, bearing.
+ * config: { url, headers, ... } chiamato come config dal feed multi-feed
+ */
+async function fetchVehiclesGTFSRT(token, config) {
+    const url = config.feed_url || config.url;
+    const res = await axios.get(url, {
         responseType: 'arraybuffer',
         headers: {
             ...config.headers,
@@ -101,11 +108,11 @@ async function fetchVehiclesGTFSRT(token, config) {
 
     if (!res.data || !res.data.length) {
         console.error("Risposta vuota o non valida:", res.data);
-        return;
+        return [];
     }
 
+    // parsing feed real time protobuf, ottimizzato per multi-feed!
     const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(new Uint8Array(res.data));
-
     const updatedVehicles = [];
 
     feed.entity.forEach(entity => {
@@ -121,13 +128,13 @@ async function fetchVehiclesGTFSRT(token, config) {
         const prev = vehicles.get(id);
 
         const speed = prev
-        ? calculateSpeed(prev.position.lat, prev.position.lon, lat, lon, prev.timestamp, timestamp)
-        : null;
+            ? calculateSpeed(prev.position.lat, prev.position.lon, lat, lon, prev.timestamp, timestamp)
+            : null;
         const bearing = prev
-        ? calculateBearing(prev.position.lat, prev.position.lon, lat, lon)
-        : null;
+            ? calculateBearing(prev.position.lat, prev.position.lon, lat, lon)
+            : null;
 
-        // Confronta i timestamp per vedere se è più recente
+        // aggiornamento solo se timestamp più recente
         if (!prev || new Date(timestamp) > new Date(prev.timestamp)) {
             const vehicleData = {
                 plate,
@@ -146,8 +153,16 @@ async function fetchVehiclesGTFSRT(token, config) {
     return updatedVehicles;
 }
 
+/**
+ * handler SIRI stub (non implementato per questo operatore)
+ */
+async function fetchVehiclesSIRI(endpoint) {
+    throw new Error('SIRI handler non implementato per questo operatore.');
+}
+
 module.exports = {
-  login,
-  fetchVehicles,
-  fetchVehiclesGTFSRT
+    login,
+    fetchVehicles,
+    fetchVehiclesGTFSRT,
+    fetchVehiclesSIRI
 };

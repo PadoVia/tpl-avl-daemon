@@ -9,38 +9,52 @@
       "slug": "busitalia_veneto_padua",
       "enable": true,
       "filename": "busitalia_veneto_padua.js",
-      "avl": {
-        "enable": true,
-        "login": {
-          "url": "https://api.busitalia.example.org/v1/auth/login",
-          "method": "POST",
-          "headers": {
-            "Content-Type": "application/json"
+
+      "avl": [
+        {
+          "enable": true,
+          "login": {
+            "url": "https://api.busitalia.example.org/v1/auth/login",
+            "method": "POST",
+            "headers": {
+              "Content-Type": "application/json"
+            },
+            "username": "your-username",
+            "password": "your-password"
           },
-          "username": "your-username",
-          "password": "your-password"
-        },
-        "vehicles": {
-          "url": "https://api.busitalia.example.org/v1/vehicles",
-          "method": "GET",
-          "headers": {
-            "Content-Type": "application/json"
+          "vehicles": {
+            "url": "https://api.busitalia.example.org/v1/vehicles",
+            "method": "GET",
+            "headers": {
+              "Content-Type": "application/json"
+            }
           }
         }
-      },
-      "gtfsrt": {
-        "enable": true,
-        "username": "gtfs-username",
-        "password": "gtfs-password",
-        "tram": {
-          "url": "https://gtfs.example.org/vehicle-positions-tram.pb",
-          "method": "GET"
+      ],
+
+      "gtfsrt": [
+        {
+          "enable": true,
+          "label": "tram",
+          "username": "gtfs-username",
+          "password": "gtfs-password",
+          "feed_url": "https://gtfs.example.org/vehicle-positions-tram.pb"
         },
-        "bus": {
-          "url": "https://gtfs.example.org/vehicle-positions-bus.pb",
-          "method": "GET"
+        {
+          "enable": true,
+          "label": "bus",
+          "username": "gtfs-username",
+          "password": "gtfs-password",
+          "feed_url": "https://gtfs.example.org/vehicle-positions-bus.pb"
         }
-      }
+      ],
+
+      "siri": [
+        {
+          "enable": false,
+          "endpoint": "https://api.busitalia.example.org/v1/siri-feed"
+        }
+      ]
     }
   ]
 }
