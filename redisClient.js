@@ -42,7 +42,6 @@ redis.on('reconnecting', () => logger.warn({ msg: "Redis reconnecting..." }));
 async function saveToRedis(key, value, ttlSeconds = null) {
   try {
     const stringValue = JSON.stringify(value);
-    await redis.publish(key, stringValue); // pubblica il valore appena salvato
     if (ttlSeconds) {
       await redis.set(key, stringValue, { EX: ttlSeconds });
     } else {
@@ -83,7 +82,9 @@ async function saveVehiclesByPlate(vehicles, operatorName, ttlSeconds) {
     const pipeline = redis.multi();
     for (const [_, vehicle] of Object.entries(vehicles)) {
       const key = `operator:${operatorName}:vehicles:status:${vehicle.plate}`;
-      pipeline.set(key, JSON.stringify(vehicle), ttlSeconds ? { EX: ttlSeconds } : undefined);
+      const stringValue = JSON.stringify(vehicle);
+      pipeline.set(key, stringValue, ttlSeconds ? { EX: ttlSeconds } : undefined);
+      pipeline.publish(key, stringValue);
     }
     await pipeline.exec();
   } catch (err) {
