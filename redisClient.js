@@ -42,6 +42,7 @@ redis.on('reconnecting', () => logger.warn({ msg: "Redis reconnecting..." }));
 async function saveToRedis(key, value, ttlSeconds = null) {
   try {
     const stringValue = JSON.stringify(value);
+    redis.publish(key, stringValue); // pubblica il valore appena salvato
     if (ttlSeconds) {
       await redis.set(key, stringValue, { EX: ttlSeconds });
     } else {
