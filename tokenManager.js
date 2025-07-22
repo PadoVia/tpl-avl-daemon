@@ -39,7 +39,7 @@ async function getTokenForOperator(operator, logger) {
             },
             timeout: 5000
         });
-        const token = res.data.token || res.data.access_token;
+        const token = res.data.token || res.data.access_token || res.data.accessToken;
         if (!token) throw new Error("Token mancante nella risposta");
 
         // decodifica il jwt per expiry (oppure usa scadenza config come fallback)
@@ -64,9 +64,19 @@ function decodeToken(token) {
     }
 }
 
+function addToken(cacheKey, token) {
+    // decodifica il jwt per expiry (oppure usa scadenza config come fallback)
+    const decoded = jwt.decode(token) || {};
+    tokenCache[cacheKey] = {
+        token,
+        exp: decoded.exp || (Date.now() / 1000 + 55 * 60) // fallback di 55 minuti
+    };
+}
+
 module.exports = {
     decodeToken,
-    getTokenForOperator
+    getTokenForOperator,
+    addToken
 };
 
 /**

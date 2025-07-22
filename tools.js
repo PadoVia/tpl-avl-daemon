@@ -18,7 +18,7 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
     let type = isAVL ? "avl" : "gtfsrt";
     // Usa primi feed per retrocompatibilità
     let feed = operator[type];
-    let feedUrl = feed && feed.url ? feed.url : (feed && feed.feed_url ? feed.feed_url : undefined);
+    let feedUrl = feed && feed.url ? feed.url : (feed && feed.feedUrl ? feed.feedUrl : undefined);
     if (type === "gtfsrt" && feed && !feedUrl && (feed.tram || feed.bus)) {
       // caso vecchio config con sub-campi tram/bus
       const result = [];
@@ -57,7 +57,7 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
     vehicles = await retry(() => handler.fetchVehicles(token, feed.vehicles), 3, 1000);
   } else if (type === 'gtfsrt') {
     const token = Buffer.from(`${feed.username}:${feed.password}`).toString('base64');
-    // La property dell'URL può essere feed.feed_url (nuovo) o feed.url (vecchio)
+    // La property dell'URL può essere feed.feedUrl (nuovo) o feed.url (vecchio)
     vehicles = await retry(() => handler.fetchVehiclesGTFSRT(token, feed), 3, 1000);
   } else if (type === 'siri') {
     vehicles = await retry(() => handler.fetchVehiclesSIRI(feed.endpoint), 3, 1000);

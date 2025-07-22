@@ -1,8 +1,8 @@
 {
-  "default_polling_interval": 1,
-  "default_timeout": 30,
-  "default_max_retries": 3,
-  "redis_url": "redis://user:password@redis.example.org:6379",
+  "defaultPollingInterval": 1,
+  "defaultTimeout": 30,
+  "defaultMaxRetries": 3,
+  "redisUrl": "redis://user:password@redis.example.org:6379",
   "operators": [
     {
       "name": "Busitalia Veneto S.p.A. - Bacino di Padova",
@@ -38,14 +38,14 @@
           "label": "tram",
           "username": "gtfs-username",
           "password": "gtfs-password",
-          "feed_url": "https://gtfs.example.org/vehicle-positions-tram.pb"
+          "feedUrl": "https://gtfs.example.org/vehicle-positions-tram.pb"
         },
         {
           "enable": true,
           "label": "bus",
           "username": "gtfs-username",
           "password": "gtfs-password",
-          "feed_url": "https://gtfs.example.org/vehicle-positions-bus.pb"
+          "feedUrl": "https://gtfs.example.org/vehicle-positions-bus.pb"
         }
       ],
 

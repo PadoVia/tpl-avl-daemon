@@ -18,7 +18,7 @@ const logger = winston.createLogger({
 // usare solo la URL da config/environment per sicurezza lol
 let configPath = process.env.CONFIG_PATH || path.resolve(__dirname, 'config.json');
 let config = require(configPath);
-const url = config.redis_url || process.env.REDIS_URL;
+const url = config.redisUrl || process.env.REDIS_URL;
 
 const redis = createClient({ url });
 

@@ -35,7 +35,7 @@ function restartAllPolling() {
 }
 
 function singlePoller(operator, feedType, feed, feedIdx) {
-  const pollInterval = (config.default_polling_interval || 60) * 1000;
+  const pollInterval = (config.defaultPollingInterval || 60) * 1000;
   return setInterval(async () => {
     try {
       await fetchVehiclesForOperator(operator, { type: feedType, feed, index: feedIdx });

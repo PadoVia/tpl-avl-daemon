@@ -85,7 +85,7 @@ async function fetchVehicles(token, config) {
  * config: { url, headers, ... } chiamato come config dal feed multi-feed
  */
 async function fetchVehiclesGTFSRT(token, config) {
-    const url = config.feed_url || config.url;
+    const url = config.feedUrl || config.url;
     const res = await axios.get(url, {
         responseType: 'arraybuffer',
         headers: {
