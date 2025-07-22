@@ -45,7 +45,11 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
   
   // Se richiesto, controlla Redis prima di fare API call
   if (checkRedisFirst) {
-    const freshness = await checkDataFreshness(operatorSlug, 5); // 5 minuti di età massima
+    const configPath = process.env.CONFIG_PATH || path.resolve(__dirname, 'config.json');
+    const config = require(configPath);
+    const freshnessMinutes = config.data_freshness_minutes || 5;
+    
+    const freshness = await checkDataFreshness(operatorSlug, freshnessMinutes);
     if (freshness.isFresh) {
       console.log(`[${operator.name}] Dati freschi trovati in Redis (${freshness.vehicleCount} veicoli). Skipping API call.`);
       return {
