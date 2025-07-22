@@ -57,16 +57,10 @@ async function fetchVehicles(token, config) {
                 ? parseFloat((vehicle.last_velocita / 10000 * 3.6).toFixed(2))
                 : null;
 
-            const prev = vehicles.get(id);
+            const prev = vehicles.get(plate);
             const bearing = prev
                 ? calculateBearing(prev.position.lat, prev.position.lon, lat, lon)
                 : null;
-
-            const isUpdated = prev &&
-                prev.plate === plate &&
-                (prev.position.lat !== lat ||
-                 prev.position.lon !== lon ||
-                 prev.timestamp !== timestamp);
 
             const vehicleData = {
                 plate,
@@ -77,9 +71,8 @@ async function fetchVehicles(token, config) {
                 position: { lat, lon }
             };
 
-            vehicles.set(id, vehicleData);
-
-            if (isUpdated) {
+            if (!prev || new Date(timestamp) > new Date(prev.timestamp)) {
+                vehicles.set(plate, vehicleData);
                 updatedVehicles.push(vehicleData);
             }
         });
@@ -125,7 +118,7 @@ async function fetchVehiclesGTFSRT(token, config) {
         const timestamp = new Date(entity.vehicle.timestamp * 1000).toISOString();
         const plate = cleanPlate(vehicle.label || '');
 
-        const prev = vehicles.get(id);
+        const prev = vehicles.get(plate);
 
         const speed = prev
             ? calculateSpeed(prev.position.lat, prev.position.lon, lat, lon, prev.timestamp, timestamp)
@@ -145,7 +138,7 @@ async function fetchVehiclesGTFSRT(token, config) {
                 position: { lat, lon }
             };
 
-            vehicles.set(id, vehicleData);
+            vehicles.set(plate, vehicleData);
             updatedVehicles.push(vehicleData);
         }
     });
