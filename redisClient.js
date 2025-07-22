@@ -51,8 +51,25 @@ async function saveVehiclesByPlate(vehicles, operatorName, ttlSeconds) {
   }
 }
 
+// Salva feed GTFSRT
+async function saveGtfsRtFeed(feed, operatorName) {
+  try {
+    const pipeline = redis.multi();
+    for (const [_, vehicle] of Object.entries(feed)) {
+      const key = `operator:${operatorName}:vehicles:gtfsrt:${vehicle.plate}`;
+      const stringValue = JSON.stringify(vehicle);
+      pipeline.lPush(key, stringValue);
+      pipeline.publish(key, stringValue);
+    }
+    await pipeline.exec();
+  } catch (err) {
+    logger.error({ msg: `Error saving GTFSRT feed for ${operatorName}`, err: err.toString() });
+  }
+}
+
 module.exports = {
-  saveVehiclesByPlate
+  saveVehiclesByPlate,
+  saveGtfsRtFeed,
 };
 
 /*

@@ -4,6 +4,7 @@ const axios = require('axios');
 const { parseRomeTimestamp, calculateBearing, calculateSpeed } = require('../utils');
 const GtfsRealtimeBindings = require('gtfs-realtime-bindings');
 const vehicles = new Map();
+const gtfsrt_feed = new Map();
 
 /**
  * effettua login e ritorna token (per feed AVL)
@@ -107,16 +108,24 @@ async function fetchVehiclesGTFSRT(token, config) {
     // parsing feed real time protobuf, ottimizzato per multi-feed!
     const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(new Uint8Array(res.data));
     const updatedVehicles = [];
+    const updatedGtfsrtFeed = [];
 
     feed.entity.forEach(entity => {
         if (!entity.vehicle || !entity.vehicle.vehicle) return;
 
         const vehicle = entity.vehicle.vehicle;
-        const id = vehicle.id;
         const lat = entity.vehicle.position.latitude;
         const lon = entity.vehicle.position.longitude;
         const timestamp = new Date(entity.vehicle.timestamp * 1000).toISOString();
         const plate = cleanPlate(vehicle.label || '');
+
+        const current_gtfsrt_feed = { ...entity.vehicle.trip, plate };
+        const previous_gtfsrt_feed = gtfsrt_feed.get(plate);
+
+        if (!previous_gtfsrt_feed || JSON.stringify(current_gtfsrt_feed) !== JSON.stringify(previous_gtfsrt_feed)) {
+            gtfsrt_feed.set(plate, current_gtfsrt_feed);
+            updatedGtfsrtFeed.push(current_gtfsrt_feed);
+        }
 
         const prev = vehicles.get(plate);
 
@@ -143,7 +152,7 @@ async function fetchVehiclesGTFSRT(token, config) {
         }
     });
 
-    return updatedVehicles;
+    return {vehicles: updatedVehicles, gtfsrt_feed: updatedGtfsrtFeed};
 }
 
 /**

@@ -2,7 +2,7 @@
 
 const path = require('path');
 const { retry } = require('./utils');
-const { saveVehiclesByPlate } = require('./redisClient');
+const { saveVehiclesByPlate, saveGtfsRtFeed } = require('./redisClient');
 const { addToken, getTokenForOperator } = require('./tokenManager');
 
 /**
@@ -42,7 +42,7 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
 
   const modulePath = path.join(__dirname, 'operators', operator.filename);
   const handler = require(modulePath);
-  let vehicles;
+  let vehicles = [], gtfsrt_feed = [];
   const tokenKey = `${operator.slug}_${type}_${index}`;
 
   if (type === 'avl') {
@@ -58,7 +58,7 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
   } else if (type === 'gtfsrt') {
     const token = Buffer.from(`${feed.username}:${feed.password}`).toString('base64');
     // La property dell'URL può essere feed.feed_url (nuovo) o feed.url (vecchio)
-    vehicles = await retry(() => handler.fetchVehiclesGTFSRT(token, feed), 3, 1000);
+    ({ vehicles, gtfsrt_feed } = await retry(() => handler.fetchVehiclesGTFSRT(token, feed), 3, 1000));
   } else if (type === 'siri') {
     vehicles = await retry(() => handler.fetchVehiclesSIRI(feed.endpoint), 3, 1000);
   } else {
@@ -67,6 +67,7 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
 
   // Salva usando slug e opzionale feed label per separare multi-feed
   await saveVehiclesByPlate(vehicles, operator.slug + (feed.label ? `_${feed.label}` : ''));
+  await saveGtfsRtFeed(gtfsrt_feed, operator.slug + (feed.label ? `_${feed.label}` : ''));
 }
 
 module.exports = {
