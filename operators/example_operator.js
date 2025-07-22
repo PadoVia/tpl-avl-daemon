@@ -8,7 +8,7 @@ async function login(config) {
   const payload = {
     username: config.username,
     password: config.password,
-    ...(config.extra_params || {})
+    ...(config.extraParams || {})
   };
   const res = await axios.post(config.url, payload, {
     headers: config.headers
@@ -31,8 +31,8 @@ async function fetchVehicles(token, vehiclesConfig) {
     : [];
 }
 
-async function fetchVehiclesGTFSRT(token, feed_url) {
-  const response = await axios.get(feed_url, {
+async function fetchVehiclesGTFSRT(token, feedUrl) {
+  const response = await axios.get(feedUrl, {
     headers: { Authorization: `Basic ${token}` },
     responseType: 'arraybuffer'
   });
