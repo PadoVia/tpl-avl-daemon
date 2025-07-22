@@ -35,47 +35,6 @@ redis.on('reconnecting', () => logger.warn({ msg: "Redis reconnecting..." }));
   }
 })();
 
-/**
- * salva key-value in redis. Valore sempre serializzato json.
- * fede: ho aggiunto try/catch e logga su errore per debugging più sicuro
- */
-async function saveToRedis(key, value, ttlSeconds = null) {
-  try {
-    const stringValue = JSON.stringify(value);
-    if (ttlSeconds) {
-      await redis.set(key, stringValue, { EX: ttlSeconds });
-    } else {
-      await redis.set(key, stringValue);
-    }
-  } catch (err) {
-    logger.error({ msg: `Error saving key ${key} to redis`, err: err.toString() });
-  }
-}
-
-async function getFromRedis(key) {
-  try {
-    const raw = await redis.get(key);
-    return raw ? JSON.parse(raw) : null;
-  } catch (err) {
-    logger.error({ msg: `Error getting key ${key} from redis`, err: err.toString() });
-    return null;
-  }
-}
-
-async function deleteFromRedis(key) {
-  try {
-    await redis.del(key);
-  } catch (err) {
-    logger.error({ msg: `Error deleting key ${key} from redis`, err: err.toString() });
-  }
-}
-
-// Salva i dati per un operatore con key composta
-async function saveOperatorData(operatorName, dataType, data, ttlSeconds) {
-  const key = `operator:${operatorName}:${dataType}`;
-  await saveToRedis(key, data, ttlSeconds);
-}
-
 // Salva i veicoli per targa con chiave strutturata
 async function saveVehiclesByPlate(vehicles, operatorName, ttlSeconds) {
   try {
@@ -93,10 +52,6 @@ async function saveVehiclesByPlate(vehicles, operatorName, ttlSeconds) {
 }
 
 module.exports = {
-  saveToRedis,
-  getFromRedis,
-  deleteFromRedis,
-  saveOperatorData,
   saveVehiclesByPlate
 };
 
