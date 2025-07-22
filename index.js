@@ -6,7 +6,7 @@ const path = require('path');
 const chokidar = require('chokidar');
 const express = require('express');
 const winston = require('winston');
-const { fetchVehiclesForOperator } = require('./tools');
+const { fetchVehiclesForOperator, performStartupDataRecovery } = require('./tools');
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
@@ -92,4 +92,20 @@ chokidar.watch(configPath).on('change', () => {
   }
 });
 
-startPolling();
+// Avvia recupero dati e poi il polling normale
+async function initializeService() {
+  try {
+    // Recupera dati esistenti da Redis all'avvio
+    await performStartupDataRecovery(config);
+    
+    // Avvia il polling normale
+    startPolling();
+    logger.info({ msg: "Servizio inizializzato con successo", ts: new Date().toISOString() });
+  } catch (err) {
+    logger.error({ msg: "Errore durante l'inizializzazione del servizio", err: err.toString() });
+    // Continua con il polling normale anche in caso di errore nel recupero
+    startPolling();
+  }
+}
+
+initializeService();

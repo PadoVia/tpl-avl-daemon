@@ -2,7 +2,7 @@
 
 const path = require('path');
 const { retry } = require('./utils');
-const { saveVehiclesByPlate, saveGtfsRtFeed } = require('./redisClient');
+const { saveVehiclesByPlate, saveGtfsRtFeed, getVehiclesByPlate, getGtfsRtFeed, checkDataFreshness } = require('./redisClient');
 const { addToken, getTokenForOperator } = require('./tokenManager');
 
 /**
@@ -10,6 +10,7 @@ const { addToken, getTokenForOperator } = require('./tokenManager');
  * - type: 'avl' | 'gtfsrt' | 'siri'
  * - feed: oggetto feed specifico (array entry)
  * - index: numero feed dell'array
+ * - checkRedisFirst: se true, controlla Redis prima di fare API call (default: false per retrocompatibilità)
  */
 async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
   // Legacy support: se chiamato come prima, mappa su nuovo formato
@@ -35,9 +36,26 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
   }
 
   // Nuova firma multi-feed
-  const { type, feed, index } = opts_or_isAVL;
+  const { type, feed, index, checkRedisFirst = false } = opts_or_isAVL;
   if (!operator.filename) {
     throw new Error(`Missing filename for operator: ${operator.name}`);
+  }
+
+  const operatorSlug = operator.slug + (feed.label ? `_${feed.label}` : '');
+  
+  // Se richiesto, controlla Redis prima di fare API call
+  if (checkRedisFirst) {
+    const freshness = await checkDataFreshness(operatorSlug, 5); // 5 minuti di età massima
+    if (freshness.isFresh) {
+      console.log(`[${operator.name}] Dati freschi trovati in Redis (${freshness.vehicleCount} veicoli). Skipping API call.`);
+      return {
+        skipped: true,
+        reason: 'data_fresh_in_redis',
+        vehicleCount: freshness.vehicleCount
+      };
+    } else {
+      console.log(`[${operator.name}] Dati non freschi in Redis (${freshness.reason}). Procedendo con API call.`);
+    }
   }
 
   const modulePath = path.join(__dirname, 'operators', operator.filename);
@@ -66,12 +84,117 @@ async function fetchVehiclesForOperator(operator, opts_or_isAVL = true) {
   }
 
   // Salva usando slug e opzionale feed label per separare multi-feed
-  await saveVehiclesByPlate(vehicles, operator.slug + (feed.label ? `_${feed.label}` : ''));
-  await saveGtfsRtFeed(gtfsrtFeed, operator.slug + (feed.label ? `_${feed.label}` : ''));
+  await saveVehiclesByPlate(vehicles, operatorSlug);
+  await saveGtfsRtFeed(gtfsrtFeed, operatorSlug);
+  
+  return {
+    skipped: false,
+    vehicleCount: vehicles.length,
+    gtfsrtCount: gtfsrtFeed.length
+  };
+}
+
+/**
+ * Funzione per il recupero dei dati all'avvio del servizio
+ * Controlla Redis e recupera solo i dati mancanti o scaduti
+ */
+async function performStartupDataRecovery(config) {
+  console.log("🔄 Avvio recupero dati da Redis...");
+  
+  const recoveryResults = [];
+  
+  for (const operator of config.operators) {
+    if (!operator.enable) continue;
+
+    // Recupera dati AVL
+    if (Array.isArray(operator.avl)) {
+      for (let idx = 0; idx < operator.avl.length; idx++) {
+        const feed = operator.avl[idx];
+        if (feed.enable) {
+          try {
+            const result = await fetchVehiclesForOperator(operator, { 
+              type: 'avl', 
+              feed, 
+              index: idx, 
+              checkRedisFirst: true 
+            });
+            recoveryResults.push({
+              operator: operator.name,
+              type: 'avl',
+              index: idx,
+              ...result
+            });
+          } catch (err) {
+            console.error(`❌ Errore recupero AVL per ${operator.name} [feed #${idx}]:`, err.message);
+          }
+        }
+      }
+    }
+
+    // Recupera dati GTFSRT
+    if (Array.isArray(operator.gtfsrt)) {
+      for (let idx = 0; idx < operator.gtfsrt.length; idx++) {
+        const feed = operator.gtfsrt[idx];
+        if (feed.enable) {
+          try {
+            const result = await fetchVehiclesForOperator(operator, { 
+              type: 'gtfsrt', 
+              feed, 
+              index: idx, 
+              checkRedisFirst: true 
+            });
+            recoveryResults.push({
+              operator: operator.name,
+              type: 'gtfsrt',
+              index: idx,
+              ...result
+            });
+          } catch (err) {
+            console.error(`❌ Errore recupero GTFSRT per ${operator.name} [feed #${idx}]:`, err.message);
+          }
+        }
+      }
+    }
+
+    // Recupera dati SIRI
+    if (Array.isArray(operator.siri)) {
+      for (let idx = 0; idx < operator.siri.length; idx++) {
+        const feed = operator.siri[idx];
+        if (feed.enable) {
+          try {
+            const result = await fetchVehiclesForOperator(operator, { 
+              type: 'siri', 
+              feed, 
+              index: idx, 
+              checkRedisFirst: true 
+            });
+            recoveryResults.push({
+              operator: operator.name,
+              type: 'siri',
+              index: idx,
+              ...result
+            });
+          } catch (err) {
+            console.error(`❌ Errore recupero SIRI per ${operator.name} [feed #${idx}]:`, err.message);
+          }
+        }
+      }
+    }
+  }
+
+  // Riassunto recupero
+  const skipped = recoveryResults.filter(r => r.skipped).length;
+  const fetched = recoveryResults.filter(r => !r.skipped).length;
+  const totalVehicles = recoveryResults.reduce((sum, r) => sum + (r.vehicleCount || 0), 0);
+  
+  console.log(`✅ Recupero dati completato: ${skipped} skip (dati freschi), ${fetched} fetch (dati nuovi/scaduti), ${totalVehicles} veicoli totali`);
+  
+  return recoveryResults;
 }
 
 module.exports = {
-  fetchVehiclesForOperator
+  fetchVehiclesForOperator,
+  performStartupDataRecovery
 };
 
 // Tutto il resto delle funzioni originali resta invariato.

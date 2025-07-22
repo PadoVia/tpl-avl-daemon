@@ -67,9 +67,102 @@ async function saveGtfsRtFeed(feed, operatorName) {
   }
 }
 
+// Recupera dati veicoli esistenti da Redis
+async function getVehiclesByPlate(operatorName) {
+  try {
+    const pattern = `operator:${operatorName}:vehicles:status:*`;
+    const keys = await redis.keys(pattern);
+    const vehicles = {};
+    
+    if (keys.length > 0) {
+      const values = await redis.mGet(keys);
+      keys.forEach((key, index) => {
+        if (values[index]) {
+          try {
+            const vehicle = JSON.parse(values[index]);
+            vehicles[vehicle.plate] = vehicle;
+          } catch (parseErr) {
+            logger.warn({ msg: `Error parsing vehicle data from Redis`, key, err: parseErr.toString() });
+          }
+        }
+      });
+    }
+    
+    return vehicles;
+  } catch (err) {
+    logger.error({ msg: `Error retrieving vehicles for ${operatorName}`, err: err.toString() });
+    return {};
+  }
+}
+
+// Recupera feed GTFSRT esistenti da Redis
+async function getGtfsRtFeed(operatorName) {
+  try {
+    const pattern = `operator:${operatorName}:vehicles:gtfsrt:*`;
+    const keys = await redis.keys(pattern);
+    const feed = {};
+    
+    if (keys.length > 0) {
+      // Per ogni chiave, prendiamo l'elemento più recente dalla lista
+      const pipeline = redis.multi();
+      keys.forEach(key => pipeline.lIndex(key, 0));
+      const values = await pipeline.exec();
+      
+      keys.forEach((key, index) => {
+        if (values[index] && values[index][1]) {
+          try {
+            const feedItem = JSON.parse(values[index][1]);
+            feed[feedItem.plate] = feedItem;
+          } catch (parseErr) {
+            logger.warn({ msg: `Error parsing GTFS-RT data from Redis`, key, err: parseErr.toString() });
+          }
+        }
+      });
+    }
+    
+    return feed;
+  } catch (err) {
+    logger.error({ msg: `Error retrieving GTFS-RT feed for ${operatorName}`, err: err.toString() });
+    return {};
+  }
+}
+
+// Verifica se i dati sono freschi (non scaduti)
+async function checkDataFreshness(operatorName, maxAgeMinutes = 5) {
+  try {
+    const vehicles = await getVehiclesByPlate(operatorName);
+    const vehicleCount = Object.keys(vehicles).length;
+    
+    if (vehicleCount === 0) {
+      return { isFresh: false, vehicleCount: 0, reason: 'no_data' };
+    }
+    
+    // Controlla se almeno uno dei veicoli ha timestamp recente
+    const now = new Date();
+    const maxAge = maxAgeMinutes * 60 * 1000;
+    
+    for (const vehicle of Object.values(vehicles)) {
+      if (vehicle.timestamp) {
+        const vehicleTime = new Date(vehicle.timestamp);
+        if ((now - vehicleTime) <= maxAge) {
+          return { isFresh: true, vehicleCount, reason: 'fresh_data' };
+        }
+      }
+    }
+    
+    return { isFresh: false, vehicleCount, reason: 'stale_data' };
+  } catch (err) {
+    logger.error({ msg: `Error checking data freshness for ${operatorName}`, err: err.toString() });
+    return { isFresh: false, vehicleCount: 0, reason: 'error' };
+  }
+}
+
 module.exports = {
   saveVehiclesByPlate,
   saveGtfsRtFeed,
+  getVehiclesByPlate,
+  getGtfsRtFeed,
+  checkDataFreshness,
 };
 
 /*

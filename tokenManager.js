@@ -64,9 +64,29 @@ function decodeToken(token) {
     }
 }
 
+/**
+ * Aggiunge un token alla cache (usato per compatibilità con tools.js)
+ */
+function addToken(key, token) {
+    try {
+        const decoded = jwt.decode(token) || {};
+        tokenCache[key] = {
+            token,
+            exp: decoded.exp || (Date.now() / 1000 + 55 * 60)
+        };
+    } catch (err) {
+        // Fallback: salva il token senza scadenza
+        tokenCache[key] = {
+            token,
+            exp: Date.now() / 1000 + 55 * 60
+        };
+    }
+}
+
 module.exports = {
     decodeToken,
-    getTokenForOperator
+    getTokenForOperator,
+    addToken
 };
 
 /**
