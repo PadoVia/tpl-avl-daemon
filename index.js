@@ -6,7 +6,7 @@ const path = require('path');
 const chokidar = require('chokidar');
 const express = require('express');
 const winston = require('winston');
-const { fetchVehiclesForOperator, performStartupDataRecovery } = require('./tools');
+const { fetchVehiclesForOperator } = require('./tools');
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
@@ -46,6 +46,28 @@ function singlePoller(operator, feedType, feed, feedIdx) {
       });
     }
   }, pollInterval);
+}
+
+// Carica dati esistenti da Redis nei Map degli operatori all'avvio
+async function loadExistingDataAtStartup() {
+  console.log("🔄 Caricamento dati esistenti da Redis...");
+  
+  for (const operator of config.operators) {
+    if (!operator.enable || !operator.filename) continue;
+    
+    try {
+      const modulePath = path.join(__dirname, 'operators', operator.filename);
+      const handler = require(modulePath);
+      
+      // Se l'operatore ha la funzione loadExistingData, la chiama
+      if (typeof handler.loadExistingData === 'function') {
+        const result = await handler.loadExistingData(operator.slug);
+        console.log(`✅ Caricati per ${operator.name}: ${result.vehicles} veicoli, ${result.gtfsrtItems} elementi GTFS-RT`);
+      }
+    } catch (err) {
+      console.error(`❌ Errore caricamento dati per ${operator.name}:`, err.message);
+    }
+  }
 }
 
 // polling su tutti i feed, multi-feed e multi-tipo!
@@ -92,18 +114,18 @@ chokidar.watch(configPath).on('change', () => {
   }
 });
 
-// Avvia recupero dati e poi il polling normale
+// Avvia caricamento dati esistenti e poi il polling normale
 async function initializeService() {
   try {
-    // Recupera dati esistenti da Redis all'avvio
-    await performStartupDataRecovery(config);
+    // Carica dati esistenti da Redis nei Map degli operatori
+    await loadExistingDataAtStartup();
     
     // Avvia il polling normale
     startPolling();
     logger.info({ msg: "Servizio inizializzato con successo", ts: new Date().toISOString() });
   } catch (err) {
     logger.error({ msg: "Errore durante l'inizializzazione del servizio", err: err.toString() });
-    // Continua con il polling normale anche in caso di errore nel recupero
+    // Continua con il polling normale anche in caso di errore nel caricamento
     startPolling();
   }
 }

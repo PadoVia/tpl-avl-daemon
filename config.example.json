@@ -3,7 +3,6 @@
   "default_timeout": 30,
   "default_max_retries": 3,
   "redis_url": "redis://user:password@redis.example.org:6379",
-  "data_freshness_minutes": 5,
   "operators": [
     {
       "name": "Busitalia Veneto S.p.A. - Bacino di Padova",

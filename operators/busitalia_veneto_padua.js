@@ -7,6 +7,20 @@ const vehicles = new Map();
 const gtfsrtFeed = new Map();
 
 /**
+ * Carica dati esistenti da Redis nei Map interni
+ * Viene chiamata dall'applicazione principale all'avvio
+ */
+async function loadExistingData(operatorSlug) {
+  const { loadExistingDataIntoMaps } = require('../redisClient');
+  try {
+    return await loadExistingDataIntoMaps(operatorSlug, vehicles, gtfsrtFeed);
+  } catch (err) {
+    console.error(`Error loading existing data for ${operatorSlug}:`, err.message);
+    return { vehicles: 0, gtfsrtItems: 0 };
+  }
+}
+
+/**
  * effettua login e ritorna token (per feed AVL)
  */
 async function login(config) {
@@ -166,5 +180,6 @@ module.exports = {
     login,
     fetchVehicles,
     fetchVehiclesGTFSRT,
-    fetchVehiclesSIRI
+    fetchVehiclesSIRI,
+    loadExistingData
 };
