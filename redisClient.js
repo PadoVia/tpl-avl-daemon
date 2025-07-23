@@ -97,19 +97,25 @@ async function loadExistingDataIntoMaps(operatorName, vehiclesMap, gtfsrtFeedMap
     const gtfsrtKeys = await redis.keys(gtfsrtPattern);
     
     if (gtfsrtKeys.length > 0) {
-      // Per ogni chiave, prendiamo l'elemento più recente dalla lista
+      // Per ogni chiave, prendiamo TUTTI gli elementi dalla lista
       const pipeline = redis.multi();
-      gtfsrtKeys.forEach(key => pipeline.lIndex(key, 0));
+      gtfsrtKeys.forEach(key => pipeline.lRange(key, 0, -1));
       const gtfsrtValues = await pipeline.exec();
       
       gtfsrtKeys.forEach((key, index) => {
         if (gtfsrtValues[index] && gtfsrtValues[index][1]) {
-          try {
-            const feedItem = JSON.parse(gtfsrtValues[index][1]);
-            gtfsrtFeedMap.set(feedItem.plate, feedItem);
-            loadedGtfsrtItems++;
-          } catch (parseErr) {
-            logger.warn({ msg: `Error parsing GTFS-RT data from Redis`, key, err: parseErr.toString() });
+          // gtfsrtValues[index][1] contiene l'array di tutti gli elementi della lista
+          const listItems = gtfsrtValues[index][1];
+          if (Array.isArray(listItems)) {
+            listItems.forEach(item => {
+              try {
+                const feedItem = JSON.parse(item);
+                gtfsrtFeedMap.set(feedItem.plate, feedItem);
+                loadedGtfsrtItems++;
+              } catch (parseErr) {
+                logger.warn({ msg: `Error parsing GTFS-RT data from Redis`, key, err: parseErr.toString() });
+              }
+            });
           }
         }
       });
