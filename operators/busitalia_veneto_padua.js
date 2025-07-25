@@ -3,8 +3,18 @@
 const axios = require('axios');
 const { parseRomeTimestamp, calculateBearing, calculateSpeed } = require('../utils');
 const GtfsRealtimeBindings = require('gtfs-realtime-bindings');
-const vehicles = new Map();
-const gtfsrtFeed = new Map();
+const { loadAllVehiclesByPlate, loadAllGtfsRtFeed } = require('../redisClient');
+const winston = require('winston');
+
+
+let vehicles = new Map();
+let gtfsrtFeed = new Map();
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || "info",
+  format: winston.format.json(),
+  transports: [new winston.transports.Console()]
+});
 
 /**
  * effettua login e ritorna token (per feed AVL)
@@ -32,6 +42,18 @@ function cleanPlate(codice) {
         plate = plate.slice(1).replace(/^0+/, '');
     }
     return plate;
+}
+
+async function syncRedisToLocal(operator, feedType) {
+    if (feedType === 'avl') {
+        vehicles = await loadAllVehiclesByPlate(operator.slug);
+        logger.info({ msg: `Loaded ${vehicles.size} vehicles for operator ${operator.name}` });
+    } else if (feedType === 'gtfsrt') {
+        gtfsrtFeed = await loadAllGtfsRtFeed(operator.slug);
+        logger.info({ msg: `Loaded ${gtfsrtFeed.size} GTFS-RT vehicles for operator ${operator.name}` });
+    } else if (feedType === 'siri') {
+        logger.warn({ msg: `SIRI feed not implemented for operator ${operator.name}` });
+    }
 }
 
 /**
@@ -101,8 +123,8 @@ async function fetchVehiclesGTFSRT(token, config) {
     }
 
     if (!res.data || !res.data.length) {
-        console.error("Risposta vuota o non valida:", res.data);
-        return [];
+        logger.warn({ msg: `GTFS-RT feed empty for ${config.label || 'default'}`, url });
+        return { vehicles: [], gtfsrtFeed: [] };
     }
 
     // parsing feed real time protobuf, ottimizzato per multi-feed!
@@ -163,6 +185,7 @@ async function fetchVehiclesSIRI(endpoint) {
 }
 
 module.exports = {
+    syncRedisToLocal,
     login,
     fetchVehicles,
     fetchVehiclesGTFSRT,

@@ -7,6 +7,7 @@ const chokidar = require('chokidar');
 const express = require('express');
 const winston = require('winston');
 const { fetchVehiclesForOperator } = require('./tools');
+const { syncRedisToLocal } = require('./operators/busitalia_veneto_padua');
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
@@ -28,9 +29,9 @@ function stopAllPolling() {
 }
 
 // restart polling (usato anche on config reload)
-function restartAllPolling() {
+async function restartAllPolling() {
   stopAllPolling();
-  startPolling();
+  await startPolling();
   logger.info({ msg: "Restarted polling after config reload", ts: new Date().toISOString() });
 }
 
@@ -49,12 +50,13 @@ function singlePoller(operator, feedType, feed, feedIdx) {
 }
 
 // polling su tutti i feed, multi-feed e multi-tipo!
-function startPolling() {
+async function startPolling() {
   for (const operator of config.operators) {
     if (!operator.enable) continue;
 
     // cicla feed AVL
     if (Array.isArray(operator.avl)) {
+      await syncRedisToLocal(operator, 'avl');
       operator.avl.forEach((feed, idx) => {
         if (feed.enable) {
           pollers.push(singlePoller(operator, 'avl', feed, idx));
@@ -63,6 +65,7 @@ function startPolling() {
     }
     // cicla feed GTFSRT
     if (Array.isArray(operator.gtfsrt)) {
+      await syncRedisToLocal(operator, 'gtfsrt');
       operator.gtfsrt.forEach((feed, idx) => {
         if (feed.enable) {
           pollers.push(singlePoller(operator, 'gtfsrt', feed, idx));
@@ -71,6 +74,7 @@ function startPolling() {
     }
     // cicla feed SIRI
     if (Array.isArray(operator.siri)) {
+      await syncRedisToLocal(operator, 'siri');
       operator.siri.forEach((feed, idx) => {
         if (feed.enable) {
           pollers.push(singlePoller(operator, 'siri', feed, idx));
@@ -81,12 +85,12 @@ function startPolling() {
 }
 
 // hot reload config
-chokidar.watch(configPath).on('change', () => {
+chokidar.watch(configPath).on('change', async () => {
   try {
     delete require.cache[require.resolve(configPath)];
     config = require(configPath);
     logger.info({ msg: "Configurazione ricaricata", ts: new Date().toISOString() });
-    restartAllPolling();
+    await restartAllPolling();
   } catch (err) {
     logger.error({ msg: "Errore reload config", err: err.toString() });
   }

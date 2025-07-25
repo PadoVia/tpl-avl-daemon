@@ -67,9 +67,80 @@ async function saveGtfsRtFeed(feed, operatorName) {
   }
 }
 
+// carica tutti i veicoli per targa da Redis
+// ritorna una mappa con targa come chiave e oggetto veicolo come valore
+// usato per inizializzare lo stato locale all'avvio
+async function loadAllVehiclesByPlate(operatorName) {
+  try {
+    const pattern = `operator:${operatorName}:vehicles:status:*`;
+    const keys = await redis.keys(pattern);
+
+    if (keys.length === 0) return new Map();
+
+    const pipeline = redis.multi();
+    keys.forEach((key) => pipeline.get(key));
+    const results = await pipeline.exec();
+
+    const vehicleMap = new Map();
+    keys.forEach((key, i) => {
+      const plate = key.split(":").pop();
+      const value = results[i];
+      if (!value) return;
+      try {
+        vehicleMap.set(plate, JSON.parse(value));
+      } catch (parseErr) {
+        logger.warn({ msg: `Error parsing vehicle ${plate}`, err: parseErr.toString() });
+      }
+    });
+
+    return vehicleMap;
+  } catch (err) {
+    logger.error({ msg: `Error loading all vehicles for ${operatorName}`, err: err.toString() });
+    return new Map();
+  }
+}
+
+// carica l'ultimo feed GTFSRT per ogni targa
+// ritorna una mappa con targa come chiave e oggetto feed come valore
+// usato per inizializzare lo stato locale all'avvio
+async function loadAllGtfsRtFeed(operatorName) {
+  try {
+    const pattern = `operator:${operatorName}:vehicles:gtfsrt:*`;
+    const keys = await redis.keys(pattern);
+
+    if (keys.length === 0) return new Map();
+
+    const pipeline = redis.multi();
+    keys.forEach((key) => pipeline.lIndex(key, 0)); // prende l'ultimo elemento
+    const results = await pipeline.exec();
+
+    const feedMap = new Map();
+    keys.forEach((key, i) => {
+      const plate = key.split(":").pop();
+      const value = results[i];
+      if (!value) return;
+
+      try {
+        const parsed = JSON.parse(value);
+        feedMap.set(plate, parsed);
+      } catch (parseErr) {
+        logger.warn({ msg: `Error parsing GTFSRT for ${plate}`, err: parseErr.toString() });
+      }
+    });
+
+    return feedMap;
+  } catch (err) {
+    logger.error({ msg: `Error loading latest GTFSRT feeds for ${operatorName}`, err: err.toString() });
+    return new Map();
+  }
+}
+
+
 module.exports = {
   saveVehiclesByPlate,
   saveGtfsRtFeed,
+  loadAllVehiclesByPlate,
+  loadAllGtfsRtFeed
 };
 
 /*
