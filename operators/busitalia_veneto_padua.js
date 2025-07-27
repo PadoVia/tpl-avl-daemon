@@ -92,7 +92,7 @@ async function fetchVehicles(token, config) {
                 door: speed >= 1 ? 0 : vehicle.porta,
                 bearing,
                 position: { lat, lon },
-                previous: prev ? { ...prev, previous: undefined } : null
+                previous: prev ? { ...prev, previous: undefined, plate: undefined } : null
             };
 
             if (!prev || new Date(timestamp) > new Date(prev.timestamp)) {
@@ -168,7 +168,7 @@ async function fetchVehiclesGTFSRT(token, config) {
                 door: prev?.door || 0,
                 bearing,
                 position: { lat, lon },
-                previous: prev ? { ...prev, previous: undefined } : null
+                previous: prev ? { ...prev, previous: undefined, plate: undefined } : null
             };
 
             vehicles.set(plate, vehicleData);
