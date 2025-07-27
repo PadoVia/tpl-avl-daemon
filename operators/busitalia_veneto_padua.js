@@ -5,6 +5,7 @@ const { parseRomeTimestamp, calculateBearing, calculateSpeed } = require('../uti
 const GtfsRealtimeBindings = require('gtfs-realtime-bindings');
 const { loadAllVehiclesByPlate, loadAllGtfsRtFeed } = require('../redisClient');
 const winston = require('winston');
+const { DateTime } = require('luxon');
 
 
 let vehicles = new Map();
@@ -142,7 +143,26 @@ async function fetchVehiclesGTFSRT(token, config) {
         const timestamp = new Date(entity.vehicle.timestamp * 1000).toISOString();
         const plate = cleanPlate(vehicle.label || '');
 
-        const currentGtfsrtFeed = { ...entity.vehicle.trip, plate };
+        // Purtroppo il GTFS-RT di Busitalia Veneto presenta un problema con i viaggi dopo le 00:00
+        const currentTrip = { ...entity.vehicle.trip };
+
+        if (currentTrip?.startTime && currentTrip?.startDate) {
+            const [hourStr, minuteStr, secondStr] = currentTrip.startTime.split(':');
+            const hour = parseInt(hourStr, 10);
+
+            if (hour >= 0 && hour < 3) { // Idealmente, 00:00-02:59
+                const tripDate = DateTime.fromFormat(currentTrip.startDate, 'yyyyLLdd');
+                const adjustedDate = tripDate.minus({ days: 1 });
+
+                const adjustedHour = hour + 24;
+                const adjustedStartTime = `${adjustedHour.toString().padStart(2, '0')}:${minuteStr}:${secondStr}`;
+
+                currentTrip.startDate = adjustedDate.toFormat('yyyyLLdd');
+                currentTrip.startTime = adjustedStartTime;
+            }
+        }
+
+        const currentGtfsrtFeed = { ...currentTrip, plate };
         const previousGtfsrtFeed = gtfsrtFeed.get(plate);
 
         if (!previousGtfsrtFeed || JSON.stringify(currentGtfsrtFeed) !== JSON.stringify(previousGtfsrtFeed)) {
