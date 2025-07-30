@@ -162,7 +162,12 @@ async function fetchVehiclesGTFSRT(token, config) {
             }
         }
 
-        const currentGtfsrtFeed = { ...currentTrip, plate };
+        const currentGtfsrtFeed = {
+            trip_id: currentTrip.tripId,
+            start_time: currentTrip.startTime,
+            start_date: currentTrip.startDate,
+            plate
+        };
         const previousGtfsrtFeed = gtfsrtFeed.get(plate);
 
         if (!previousGtfsrtFeed || JSON.stringify(currentGtfsrtFeed) !== JSON.stringify(previousGtfsrtFeed)) {
